@@ -522,7 +522,7 @@ func TestRun_Errors(t *testing.T) {
 		},
 		{
 			message: "is not a directory",
-			args:    []string{"--mount=" + notWasmPath, "testdata/wasi_env.wasm"},
+			args:    []string{"--mount=" + notWasmPath + ":/", "testdata/wasi_env.wasm"},
 		},
 		{
 			message: "invalid cachedir",
