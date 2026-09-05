@@ -90,6 +90,9 @@ func pollOneoffFn(_ context.Context, mod api.Module, params []uint64) sys.Errno 
 	}
 	// The timeout is initialized at max Duration, the loop will find the minimum.
 	var timeout time.Duration = 1<<63 - 1
+	// hasClockSub is true when a clock subscription set the timeout above, i.e.
+	// when it is a real deadline instead of the sentinel it is initialized to.
+	hasClockSub := false
 	// Count of all the subscriptions that have been already written back to outBuf.
 	// nevents*32 returns at all times the offset where the next event should be written:
 	// this way we ensure that there are no gaps between records.
@@ -122,6 +125,7 @@ func pollOneoffFn(_ context.Context, mod api.Module, params []uint64) sys.Errno 
 			if newTimeout < timeout {
 				timeout = newTimeout
 			}
+			hasClockSub = true
 			// Ack the clock event to the outBuf.
 			writeEvent(outBuf[outOffset:], evt)
 			nevents++
@@ -166,9 +170,9 @@ func pollOneoffFn(_ context.Context, mod api.Module, params []uint64) sys.Errno 
 	if nevents == nsubscriptions {
 		// We already wrote back all the results. We already wrote this number
 		// earlier to offset `resultNevents`.
-		// We only need to observe the timeout (nonzero if there are clock subscriptions)
+		// We only need to observe the timeout (set only by clock subscriptions)
 		// and return.
-		if timeout > 0 {
+		if hasClockSub && timeout > 0 {
 			sysCtx.Nanosleep(int64(timeout))
 		}
 		return 0
